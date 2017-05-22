@@ -1,0 +1,59 @@
+@import 'carousel-mixins';
+
+:host {
+  display: flex;
+  flex-direction: column;
+  max-width: 100vw;
+  margin-right: -15px;
+  margin-left: -15px;
+
+  & /deep/ {
+    flub-carousel-item {
+      order: 1;
+
+      &:last-child {
+        order: 0;
+      }
+    }
+
+
+    .is-next-disabled flub-carousel-item:last-child::after,
+    .is-prev-disabled flub-carousel-item:first-child::after {
+      content: "";
+      background-color: white;
+      position: absolute;
+      top: 0;
+      width: 100vh;
+      height: 100%;
+      z-index: 2
+    }
+
+    .is-next-disabled flub-carousel-item:last-child::after {
+      left: 100%;
+    }
+    .is-prev-disabled flub-carousel-item:first-child::after {
+      right: 100%;
+    }
+  }
+
+
+
+  section {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    position: relative;
+  }
+
+  .wrapper {
+    overflow: hidden;
+  }
+  .carousel{
+    will-change: transform;
+    display: flex;
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+
+}
