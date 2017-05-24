@@ -8,31 +8,12 @@
   margin-left: -15px;
 
   & /deep/ {
-    flub-carousel-item {
+    flexbox-carousel-item {
       order: 1;
 
       &:last-child {
         order: 0;
       }
-    }
-
-
-    .is-next-disabled flub-carousel-item:last-child::after,
-    .is-prev-disabled flub-carousel-item:first-child::after {
-      content: "";
-      background-color: white;
-      position: absolute;
-      top: 0;
-      width: 100vh;
-      height: 100%;
-      z-index: 2
-    }
-
-    .is-next-disabled flub-carousel-item:last-child::after {
-      left: 100%;
-    }
-    .is-prev-disabled flub-carousel-item:first-child::after {
-      right: 100%;
     }
   }
 
@@ -54,6 +35,7 @@
     margin: 0;
     padding: 0;
     position: relative;
+    transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
   }
 
 }

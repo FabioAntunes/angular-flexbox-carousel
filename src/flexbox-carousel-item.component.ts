@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, Input, HostBinding } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, Input, HostBinding } from '@angular/core';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
-  selector: 'flex-carousel-item',
+  selector: 'flexbox-carousel-item',
   template: '<ng-content></ng-content>'
 })
 export class FlexboxCarouselItemComponent {
@@ -13,7 +13,9 @@ export class FlexboxCarouselItemComponent {
   @HostBinding('style.order') styleOrder: number;
   @HostBinding('attr.order') attrOrder = 0;
 
-  setOrder(order) {
+  constructor(public elem: ElementRef) { }
+
+  setOrder(order: number) {
     this.styleOrder = order;
     this.attrOrder = order;
   }

@@ -30,6 +30,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   panning = false;
   max = 0;
   order = 0;
+  index = 0;
   reversing = false;
   interval: any;
   step = 1;
@@ -67,11 +68,11 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   }
 
   get isNextDisabled () {
-    return !this.loop && this.order + this.step === this.max;
+    return !this.loop && this.index + 1 === this.max;
   }
 
   get isPrevDisabled () {
-    return !this.loop && this.order - 1 < 0;
+    return !this.loop && this.index - 1 < 0;
   }
 
   panHasMinDistance (deltaX: number, initalLeft: number) {
@@ -125,6 +126,9 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   moveNext () {
     if (this.loop) {
       this.order = this.order + 1 === this.max ? 0 : this.order + 1;
+    } else {
+      this.index = this.index + 1 === this.max ? 0 : this.index + 1;
+      this.carousel.nativeElement.style.transform = `translateX(${this.initalLeft * this.index}px)`;
     }
     this.reversing = false;
   }
@@ -140,7 +144,12 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   movePrev () {
     if (this.loop) {
       this.order = this.order - 1 < 0 ? this.max - 1 : this.order - 1;
+    } else {
+      const initalLeft = Math.abs(this.initalLeft);
+      this.index = this.index - 1 < 0 ? this.max - 1 : this.index - 1;
+      this.carousel.nativeElement.style.transform = `translateX(${initalLeft * this.index}px)`;
     }
+
     this.reversing = true;
   }
 
@@ -151,6 +160,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   }
 
   private animate() {
+    if (!this.loop) return;
     this.updateOrder();
     this.animation = true;
     setTimeout(() => {
