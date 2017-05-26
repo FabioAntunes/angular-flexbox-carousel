@@ -9,9 +9,11 @@ import {
   QueryList,
   ViewChild
 } from '@angular/core';
+import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/observable/fromEvent';
 import 'rxjs/add/operator/map';
+import 'rxjs/add/operator/distinctUntilChanged';
 import { Subscription } from 'rxjs/Subscription';
 import { FlexboxCarouselItemComponent } from './flexbox-carousel-item.component';
 
@@ -25,15 +27,22 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   @Input() automatic = false;
   @ContentChildren(FlexboxCarouselItemComponent) items: QueryList<FlexboxCarouselItemComponent>;
   @ViewChild('carousel') carousel: ElementRef;
-  private sub: Subscription;
+  @ViewChild('section') section: ElementRef;
+  private subs: Subscription[] = [];
+  subject = new Subject<ElementRef>();
   animation = false;
   panning = false;
   max = 0;
   order = 0;
   index = 0;
+  flexWidth = 0;
   reversing = false;
   interval: any;
   step = 1;
+  translate = 0;
+  active: FlexboxCarouselItemComponent;
+  maxWidth = 0;
+  itemWidth = 0;
 
   ngAfterContentInit() {
     this.initialize();
@@ -46,14 +55,18 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
 
   ngOnDestroy() {
     this.destroyInterval();
-    this.sub.unsubscribe();
+    this.subs.map(s => {
+      s.unsubscribe();
+    })
   }
 
   ngOnInit() {
-    this.sub = Observable.fromEvent(window, 'resize').map(e => {
-      this.calcItems();
-      return e;
-    }).subscribe();
+    this.subs = [
+      Observable.fromEvent(window, 'resize').map(e => {
+        this.calcItems();
+        return e;
+      }).subscribe()
+    ];
     if (this.automatic) {
       this.destroyInterval();
       this.interval = setInterval(() => {
@@ -61,10 +74,6 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
           this.animate();
       }, 3000);
     }
-  }
-
-  get initalLeft() {
-    return parseInt(window.getComputedStyle(this.carousel.nativeElement, undefined).getPropertyValue('left').split('px')[0], 10);
   }
 
   get isNextDisabled () {
@@ -75,18 +84,20 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     return !this.loop && this.index - 1 < 0;
   }
 
-  panHasMinDistance (deltaX: number, initalLeft: number) {
-    return this.carousel && Math.abs(deltaX) > Math.abs(initalLeft / 3);
+  panHasMinDistance (deltaX: number) {
+    return this.carousel && Math.abs(deltaX) > Math.abs(this.getWidth(this.active.elem.nativeElement) / 3);
   }
 
   pan(event: any) {
     this.destroyInterval();
     if (this.carousel && !event.isFinal && Math.abs(event.overallVelocityX) > Math.abs(event.overallVelocityY)) {
-      this.carousel.nativeElement.style.transform =  `translateX(${event.deltaX}px)`;
+      this.carousel.nativeElement.style.transform =  `translate3d(${this.translate + event.deltaX}px, 0, 0)`;
+      this.panning = !this.loop;
     }
   }
 
   panend(event: any) {
+    this.panning = false;
     if (event.deltaX > 0) {
       this.panRight(event);
     } else {
@@ -95,26 +106,33 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   }
 
   private panLeft (event: any) {
-    if (this.panHasMinDistance(event.deltaX, this.initalLeft) && !this.isNextDisabled) {
-      this.carousel.nativeElement.style.transform = `translateX(${ this.initalLeft }px)`;
+    if (this.panHasMinDistance(event.deltaX) && !this.isNextDisabled) {
+      // this.carousel.nativeElement.style.transform = `translate3d(${ this.initalLeft }px, 0, 0)`;
       this.moveNext();
       this.animatePan();
-    } else {
-      this.carousel.nativeElement.style.transform = '';
+      return;
     }
+    this.resetPan();
   }
 
   private panRight (event: any) {
-    const initalLeft = Math.abs(this.initalLeft);
-    if (this.panHasMinDistance(event.deltaX, initalLeft) && !this.isPrevDisabled) {
-      this.carousel.nativeElement.style.transform = `translateX(${initalLeft}px)`;
+    const initalLeft = Math.abs(this.flexWidth);
+    if (this.panHasMinDistance(event.deltaX) && !this.isPrevDisabled) {
+      // this.carousel.nativeElement.style.transform = `translate3d(${initalLeft}px, 0, 0)`;
       this.movePrev();
       this.animatePan();
-    } else {
-      this.carousel.nativeElement.style.transform = '';
+      return;
     }
+    this.resetPan();
   }
 
+  private resetPan() {
+    if (this.loop) {
+      this.carousel.nativeElement.style.transform = '';
+      return;
+    }
+    this.carousel.nativeElement.style.transform = `translate3d(${this.translate}px, 0, 0)`;
+  }
 
   next () {
     this.destroyInterval();
@@ -127,8 +145,12 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     if (this.loop) {
       this.order = this.order + 1 === this.max ? 0 : this.order + 1;
     } else {
-      this.index = this.index + 1 === this.max ? 0 : this.index + 1;
-      this.carousel.nativeElement.style.transform = `translateX(${this.initalLeft * this.index}px)`;
+      const items = this.items.toArray();
+      console.log(this.step);
+      const step = this.max - (this.index + this.step) >= this.step ? this.step: this.max - (this.index + this.step);
+      this.index = this.index + this.step >= this.max ? this.max - 1 : this.index + this.step;
+      this.translate -= this.itemWidth * step;
+      this.carousel.nativeElement.style.transform = `translate3d(${this.translate}px, 0, 0)`;
     }
     this.reversing = false;
   }
@@ -145,9 +167,12 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     if (this.loop) {
       this.order = this.order - 1 < 0 ? this.max - 1 : this.order - 1;
     } else {
-      const initalLeft = Math.abs(this.initalLeft);
-      this.index = this.index - 1 < 0 ? this.max - 1 : this.index - 1;
-      this.carousel.nativeElement.style.transform = `translateX(${initalLeft * this.index}px)`;
+      const items= this.items.toArray();
+      const step = this.index - this.step >= this.step ? this.step : this.index - this.step;
+      this.index = this.index - this.step < 0 ? 0 : this.index - this.step;
+      const nextTranslate = this.translate + this.itemWidth * step;
+      this.translate = nextTranslate > 0 ? 0 : nextTranslate;
+      this.carousel.nativeElement.style.transform = `translate3d(${this.translate}px, 0, 0)`;
     }
 
     this.reversing = true;
@@ -170,6 +195,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   }
 
   private animatePan() {
+    if (!this.loop) return;
     setTimeout(() => {
       this.panning = true;
       this.updateOrder();
@@ -182,14 +208,19 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
 
   private calcItems() {
     if (this.items.length) {
-      const width = parseInt(window.getComputedStyle(this.carousel.nativeElement, undefined).getPropertyValue('width').split('px')[0], 10);
-      this.step = Math.floor(width / Math.abs(this.initalLeft));
-      if (this.step > 1 && this.order + 1 === this.max) {
-        this.order = this.order - this.step;
-        this.updateOrder();
-      }
+      this.flexWidth = this.getWidth(this.section.nativeElement);
+      console.log(this.flexWidth);
+      this.active = this.items.first;
+      this.itemWidth = this.getWidth(this.active.elem.nativeElement);
+      console.log(this.itemWidth);
+      console.log(this.flexWidth / this.itemWidth);
+      this.step = Math.floor(this.flexWidth / Math.abs(this.itemWidth));
+      console.log(this.step);
+      // if (this.step > 1 && this.order + 1 === this.max) {
+      //   this.order = this.order - this.step;
+      //   this.updateOrder();
+      // }
     }
-
   }
 
   private getOrder (i: number) {
@@ -199,18 +230,33 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   private initialize () {
     this.order = 0;
     this.max = this.items.length;
-    this.items.forEach((item, index) => {
-      // since we shift the screen one position left, we need to make sure
-      // that our last item, is the first in the flex order;
-      index = index + 1 === this.max ? 0 : index + 1;
-      item.index = index;
-    });
-    this.calcItems();
+    setTimeout(() => {
+      this.items.forEach((item, index) => {
+        // since we shift the screen one position left, we need to make sure
+        // that our last item, is the first in the flex order;
+        if (this.loop) {
+          index = index + 1 === this.max ? 0 : index + 1;
+        }
+        item.index = index;
+        item.subject = this.subject;
+        this.maxWidth += this.getWidth(item.elem.nativeElement);
+      });
+      this.calcItems();
+    }, 1000);
+  }
+
+  private setActive(item: FlexboxCarouselItemComponent) {
+    item.active = true;
+    this.active = item;
   }
 
   private updateOrder () {
     this.items.forEach(item => {
       item.setOrder(this.getOrder(item.index));
     });
+  }
+
+  private getWidth(elem: any) {
+    return parseInt(window.getComputedStyle(elem).getPropertyValue('width').split('px')[0], 10);
   }
 }

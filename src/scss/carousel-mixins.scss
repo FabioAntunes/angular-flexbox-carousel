@@ -1,5 +1,19 @@
 @mixin make-carousel-breakpoints($width, $breakpoints) {
-  @include make-transform($width);
+  &.is-set {
+    transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  &.panning {
+    transition: none;
+  }
+  &.has-loop {
+    @include make-transform($width);
+    &.is-set {
+      transform: none;
+    }
+    &.panning {
+      transform: none;
+    }
+  }
 
 
   @each $min-width, $item-width in $breakpoints {
@@ -9,25 +23,17 @@
   }
 
   &.is-reversing {
-    transform: translateX((-$width));
+    transform: translate3d((-$width), 0, 0);
     @each $min-width, $item-width in $breakpoints {
       @media (min-width: $min-width) {
-        transform: translateX((-$min-width));
+        transform: translate3d((-$min-width), 0, 0);
       }
     }
-  }
-  &.is-set {
-    transform: none;
-    transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
-  }
-  &.panning {
-    transform: none;
-    transition: none;
   }
 }
 
 
 @mixin make-transform($width) {
     left: (-$width);
-    transform: translateX($width);
+    transform: translate3d($width, 0, 0);
 }
