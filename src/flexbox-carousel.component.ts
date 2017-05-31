@@ -204,9 +204,10 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     if (this.items.length) {
       this.max = this.items.length;
       this.flexWidth = this.getWidth(this.section.nativeElement);
-      console.log(this.flexWidth);
       this.itemWidth = this.getWidth(this.items.first.elem.nativeElement);
       this.visibleItems = Math.floor(this.flexWidth / Math.abs(this.itemWidth));
+      this.translate = -this.index * this.itemWidth;
+      this.carousel.nativeElement.style.transform = `translate3d(${this.translate}px, 0, 0)`;
       // if (this.step > 1 && this.order + 1 === this.max) {
       //   this.order = this.order - this.step;
       //   this.updateOrder();
