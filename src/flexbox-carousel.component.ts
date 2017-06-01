@@ -13,7 +13,6 @@ import { Subject } from 'rxjs/Subject';
 import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/observable/fromEvent';
 import 'rxjs/add/operator/map';
-import 'rxjs/add/operator/distinctUntilChanged';
 import { Subscription } from 'rxjs/Subscription';
 import { FlexboxCarouselItemComponent } from './flexbox-carousel-item.component';
 
@@ -62,10 +61,10 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
 
   ngOnInit() {
     this.subs = [
-      Observable.fromEvent(window, 'resize').map(e => {
+      Observable.fromEvent(window, 'resize').subscribe(e => {
+        console.log(e);
         this.calcItems();
-        return e;
-      }).subscribe()
+      })
     ];
     if (this.automatic) {
       this.destroyInterval();
@@ -76,15 +75,19 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     }
   }
 
-  get isNextDisabled () {
+  get isNextDisabled() {
     return !this.loop && this.index + this.visibleItems === this.max;
   }
 
-  get isPrevDisabled () {
+  get isPrevDisabled() {
     return !this.loop && this.index - 1 < 0;
   }
 
-  panHasMinDistance (deltaX: number) {
+  panHasMinDistance(deltaX: number, direction: string) {
+    let width = this.getItem().offsetWidth;
+    if (direction === 'left') {
+      width = this.getItem(this.index + this.visibleItems).offsetWidth;
+    }
     return this.carousel && Math.abs(deltaX) > Math.abs(this.itemWidth / 3);
   }
 
@@ -106,7 +109,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   }
 
   private panLeft (event: any) {
-    if (this.panHasMinDistance(event.deltaX) && !this.isNextDisabled) {
+    if (this.panHasMinDistance(event.deltaX, 'left') && !this.isNextDisabled) {
       // this.carousel.nativeElement.style.transform = `translate3d(${ this.initalLeft }px, 0, 0)`;
       this.moveNext();
       this.animatePan();
@@ -117,7 +120,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
 
   private panRight (event: any) {
     const initalLeft = Math.abs(this.flexWidth);
-    if (this.panHasMinDistance(event.deltaX) && !this.isPrevDisabled) {
+    if (this.panHasMinDistance(event.deltaX, 'right') && !this.isPrevDisabled) {
       // this.carousel.nativeElement.style.transform = `translate3d(${initalLeft}px, 0, 0)`;
       this.movePrev();
       this.animatePan();
@@ -145,8 +148,9 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     if (this.loop) {
       this.order = this.order + 1 === this.max ? 0 : this.order + 1;
     } else {
+      const item = this.getItem(this.index + this.visibleItems);
+      this.translate = -(item.offsetLeft - (this.flexWidth - item.offsetWidth));
       this.index += 1;
-      this.translate -= this.itemWidth;
       this.carousel.nativeElement.style.transform = `translate3d(${this.translate}px, 0, 0)`;
     }
     this.reversing = false;
@@ -164,8 +168,11 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     if (this.loop) {
       this.order = this.order - 1 < 0 ? this.max - 1 : this.order - 1;
     } else {
+      const item = this.getItem(this.index - 1);
+      console.log(item);
+      console.log(this.index);
+      this.translate = -(item.offsetLeft - (this.flexWidth - item.offsetWidth));
       this.index -= 1;
-      this.translate += this.itemWidth;
       this.carousel.nativeElement.style.transform = `translate3d(${this.translate}px, 0, 0)`;
     }
 
@@ -202,12 +209,16 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
 
   private calcItems() {
     if (this.items.length) {
+      this.maxWidth = this.items.reduce((width, item) => {
+        return width + item.elem.nativeElement.offsetWidth;
+      }, 0);
       this.max = this.items.length;
       this.flexWidth = this.getWidth(this.section.nativeElement);
-      this.itemWidth = this.getWidth(this.items.first.elem.nativeElement);
-      this.visibleItems = Math.floor(this.flexWidth / Math.abs(this.itemWidth));
-      this.translate = -this.index * this.itemWidth;
+      const item = this.getItem();
+      const maxTranslate = this.maxWidth - this.flexWidth;
+      this.translate = item.offsetLeft > maxTranslate ? -maxTranslate : -item.offsetLeft;
       this.carousel.nativeElement.style.transform = `translate3d(${this.translate}px, 0, 0)`;
+      this.calcVisibleItems();
       // if (this.step > 1 && this.order + 1 === this.max) {
       //   this.order = this.order - this.step;
       //   this.updateOrder();
@@ -223,6 +234,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     this.order = 0;
     this.max = this.items.length;
     setTimeout(() => {
+      this.calcItems();
       this.items.forEach((item, index) => {
         // since we shift the screen one position left, we need to make sure
         // that our last item, is the first in the flex order;
@@ -231,10 +243,20 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
         }
         item.index = index;
         item.subject = this.subject;
-        this.maxWidth += this.getWidth(item.elem.nativeElement);
       });
-      this.calcItems();
     }, 1000);
+  }
+
+  private calcVisibleItems() {
+    const translate = Math.abs(this.translate);
+    this.visibleItems = this.items.toArray().slice(this.index).reduce((visible, item) => {
+      if (this.flexWidth - 
+        (item.elem.nativeElement.offsetLeft - translate + item.elem.nativeElement.offsetWidth) >= 0
+      ) {
+        return visible + 1;
+      }
+      return visible;
+    }, 0);
   }
 
   private updateOrder () {
@@ -245,5 +267,10 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
 
   private getWidth(elem: any) {
     return parseInt(window.getComputedStyle(elem).getPropertyValue('width').split('px')[0], 10);
+  }
+  private getItem(index?: number) {
+    index = index !== undefined && index >= 0 ? index : this.index;
+    console.log(index);
+    return this.items.toArray()[index].elem.nativeElement;
   }
 }

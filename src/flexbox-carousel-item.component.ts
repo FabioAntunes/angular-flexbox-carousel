@@ -20,7 +20,9 @@ export class FlexboxCarouselItemComponent {
     this.subject.next(this.elem);
   }
 
-  constructor(public elem: ElementRef) { }
+  constructor(public elem: ElementRef) {
+    console.log(elem);
+  }
 
   setOrder(order: number) {
     this.styleOrder = order;
