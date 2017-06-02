@@ -108,7 +108,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   }
 
   private panLeft (event: any) {
-    if (this.panHasMinDistance(event.deltaX, 'left') && !this.isNextDisabled) {
+    if (!this.isNextDisabled && this.panHasMinDistance(event.deltaX, 'left')) {
       // this.carousel.nativeElement.style.transform = `translate3d(${ this.initalLeft }px, 0, 0)`;
       this.moveNext();
       this.animatePan();
@@ -119,7 +119,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
 
   private panRight (event: any) {
     const initalLeft = Math.abs(this.flexWidth);
-    if (this.panHasMinDistance(event.deltaX, 'right') && !this.isPrevDisabled) {
+    if (!this.isPrevDisabled && this.panHasMinDistance(event.deltaX, 'right')) {
       // this.carousel.nativeElement.style.transform = `translate3d(${initalLeft}px, 0, 0)`;
       this.movePrev();
       this.animatePan();
@@ -258,6 +258,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
       }
       return visible;
     }, 0);
+    console.log('visible', this.visibleItems);
   }
 
   private updateOrder () {
