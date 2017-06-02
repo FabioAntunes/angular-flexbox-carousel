@@ -62,7 +62,6 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   ngOnInit() {
     this.subs = [
       Observable.fromEvent(window, 'resize').subscribe(e => {
-        console.log(e);
         this.calcItems();
       })
     ];
@@ -168,11 +167,9 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     if (this.loop) {
       this.order = this.order - 1 < 0 ? this.max - 1 : this.order - 1;
     } else {
-      const item = this.getItem(this.index - 1);
-      console.log(item);
-      console.log(this.index);
-      this.translate = -(item.offsetLeft - (this.flexWidth - item.offsetWidth));
       this.index -= 1;
+      const item = this.getItem();
+      this.translate = -item.offsetLeft;
       this.carousel.nativeElement.style.transform = `translate3d(${this.translate}px, 0, 0)`;
     }
 
@@ -216,7 +213,11 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
       this.flexWidth = this.getWidth(this.section.nativeElement);
       const item = this.getItem();
       const maxTranslate = this.maxWidth - this.flexWidth;
-      this.translate = item.offsetLeft > maxTranslate ? -maxTranslate : -item.offsetLeft;
+      if (item.offsetLeft > maxTranslate && maxTranslate > 0) {
+        this.translate = -maxTranslate
+      } else {
+        this.translate = -item.offsetLeft;
+      }
       this.carousel.nativeElement.style.transform = `translate3d(${this.translate}px, 0, 0)`;
       this.calcVisibleItems();
       // if (this.step > 1 && this.order + 1 === this.max) {
@@ -270,7 +271,6 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   }
   private getItem(index?: number) {
     index = index !== undefined && index >= 0 ? index : this.index;
-    console.log(index);
     return this.items.toArray()[index].elem.nativeElement;
   }
 }
