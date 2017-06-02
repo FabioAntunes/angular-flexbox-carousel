@@ -154,6 +154,12 @@ gulp.task('copy:readme', function () {
     .pipe(gulp.dest(distFolder));
 });
 
+gulp.task('copy:scss', function () {
+  return gulp.src(`${srcFolder}/scss/**/*.scss`)
+    .pipe(gulp.dest(`${distFolder}/scss`));
+});
+
+
 /**
  * 10. Delete /.tmp folder
  */
@@ -179,6 +185,7 @@ gulp.task('compile', function () {
     'copy:build',
     'copy:manifest',
     'copy:readme',
+    'copy:scss',
     'clean:build',
     'clean:tmp',
     function (err) {
