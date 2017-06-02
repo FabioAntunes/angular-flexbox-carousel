@@ -258,7 +258,6 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
       }
       return visible;
     }, 0);
-    console.log('visible', this.visibleItems);
   }
 
   private updateOrder () {
