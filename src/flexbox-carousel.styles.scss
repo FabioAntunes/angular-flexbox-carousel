@@ -25,6 +25,7 @@
   .wrapper {
     overflow: hidden;
     width: 100%;
+    touch-action: pan-x;
   }
   .carousel{
     will-change: transform;

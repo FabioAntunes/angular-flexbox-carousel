@@ -36,10 +36,8 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   @ViewChild('carousel') carousel: ElementRef;
   @ViewChild('section') section: ElementRef;
   private subs: Subscription[] = [];
-  subject = new Subject<ElementRef>();
   animation = false;
   panning = false;
-  max = 0;
   order = 0;
   index = 0;
   flexWidth = 0;
@@ -48,11 +46,13 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   step = 1;
   translate = 0;
   maxWidth = 0;
-  itemWidth = 0;
   visibleItems = {
     left: 0,
     right: 0,
     visible: 0
+  };
+  styles = {
+    transform: 'translate3d(0, 0, 0)'
   };
 
   ngAfterContentInit() {
@@ -94,6 +94,10 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     return !this.loop && this.visibleItems.left - 1 < 0;
   }
 
+  get max() {
+    return this.items.length;
+  }
+
   panHasMinDistance(deltaX: number, direction: string) {
     let width = this.getItem(this.visibleItems.left - 1).offsetWidth;
     if (direction === 'left') {
@@ -102,10 +106,12 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     return this.carousel && Math.abs(deltaX) > Math.abs(width/ 3);
   }
 
-  pan(event: any) {
+  pan({overallVelocityX, overallVelocityY, deltaX, deltaY}: any) {
     this.destroyInterval();
-    if (this.carousel && !event.isFinal && Math.abs(event.overallVelocityX) > Math.abs(event.overallVelocityY)) {
-      this.carousel.nativeElement.style.transform =  `translate3d(${this.translate + event.deltaX}px, 0, 0)`;
+    overallVelocityX = Math.abs(overallVelocityX);
+    overallVelocityY = Math.abs(overallVelocityY);
+    if (overallVelocityX > overallVelocityY) {
+      this.styles.transform = `translate3d(${this.translate + deltaX}px, 0, 0)`;
       this.panning = !this.loop;
     }
   }
@@ -142,10 +148,10 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
 
   private resetPan() {
     if (this.loop) {
-      this.carousel.nativeElement.style.transform = '';
+      this.styles.transform = `translate3d(0, 0, 0)`;
       return;
     }
-    this.carousel.nativeElement.style.transform = `translate3d(${this.translate}px, 0, 0)`;
+    this.styles.transform = `translate3d(${this.translate}px, 0, 0)`;
   }
 
   next () {
@@ -162,12 +168,14 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
       const item = this.getItem(this.visibleItems.right + 1);
       this.translate = -(item.offsetLeft - (this.flexWidth - item.offsetWidth));
       this.index += 1;
-      this.carousel.nativeElement.style.transform = `translate3d(${this.translate}px, 0, 0)`;
-      this.calcVisibleItems();
+      this.styles.transform = `translate3d(${this.translate}px, 0, 0)`;
+      setTimeout(() => {
+        this.calcVisibleItems();
+        this.emitNextEvent();
+      }, 100)
     }
 
     this.reversing = false;
-    this.emitNextEvent();
   }
 
   prev () {
@@ -186,12 +194,13 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
       const item = this.getItem(this.visibleItems.left - 1);
       this.translate = -item.offsetLeft;
       this.carousel.nativeElement.style.transform = `translate3d(${this.translate}px, 0, 0)`;
-      this.calcVisibleItems();
-
+      setTimeout(() => {
+        this.calcVisibleItems();
+        this.emitPreviousEvent();
+      }, 100)
     }
 
     this.reversing = true;
-    this.emitPreviousEvent();
   }
 
   destroyInterval() {
@@ -227,8 +236,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
       this.maxWidth = this.items.reduce((width, item) => {
         return width + item.elem.nativeElement.offsetWidth;
       }, 0);
-      this.max = this.items.length;
-      this.flexWidth = this.getWidth(this.section.nativeElement);
+      this.flexWidth = this.section.nativeElement.offsetWidth;
       const item = this.getItem();
       const maxTranslate = this.maxWidth - this.flexWidth;
       if (item.offsetLeft > maxTranslate && maxTranslate > 0) {
@@ -251,7 +259,6 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
 
   private initialize () {
     this.order = 0;
-    this.max = this.items.length;
     setTimeout(() => {
       this.calcItems();
       this.items.forEach((item, index) => {
@@ -261,7 +268,6 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
           index = index + 1 === this.max ? 0 : index + 1;
         }
         item.index = index;
-        item.subject = this.subject;
       });
       this.emitOnChangesEvent();
     }, 1000);
@@ -281,6 +287,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
       }
       return acc;
     }, {left: Infinity, right: 0, visible: 0});
+    
   }
 
   private updateOrder () {
@@ -289,9 +296,6 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     });
   }
 
-  private getWidth(elem: any) {
-    return parseInt(window.getComputedStyle(elem).getPropertyValue('width').split('px')[0], 10);
-  }
   private getItem(index?: number) {
     index = index !== undefined && index >= 0 ? index : this.index;
     return this.items.toArray()[index].elem.nativeElement;
@@ -299,17 +303,23 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
 
   private emitNextEvent() {
     const e = new NextEvent(this.index, !this.isNextDisabled, !this.isPrevDisabled);
-    this.eventListener.next(e);
+    this.emitEvent(e);
   }
 
   private emitPreviousEvent() {
     const e = new PreviousEvent(this.index, !this.isNextDisabled, !this.isPrevDisabled);
-    this.eventListener.next(e);
+    this.emitEvent(e);
   }
 
    private emitOnChangesEvent() {
     const e = new OnChangesEvent(this.index, !this.isNextDisabled, !this.isPrevDisabled);
-    this.eventListener.next(e);
+     this.emitEvent(e);
+  }
+
+  private emitEvent(e: FlexboxCarouselEvent) {
+    if (this.eventListener) {
+      this.eventListener.next(e);
+    }
   }
 
 }
