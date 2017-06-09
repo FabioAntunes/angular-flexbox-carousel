@@ -33,6 +33,23 @@
     margin: 0;
     padding: 0;
     position: relative;
+    transform: translate3d(0, 0,0);
+    backface-visibility: hidden;
+    perspective: 1000;
+    &.is-set {
+      transition: transform 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+    &.panning {
+      transition: none;
+    }
+    &.has-loop {
+      &.is-set {
+        transform: none;
+      }
+      &.panning {
+        transform: none;
+      }
+    }
   }
 
 }
