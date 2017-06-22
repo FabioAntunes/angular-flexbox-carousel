@@ -55,6 +55,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     left: '0',
     transform: 'translate3d(0, 0, 0)'
   };
+  distance = 0;
 
   ngAfterContentInit() {
     this.initialize();
@@ -107,23 +108,42 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
     return this.carousel && Math.abs(deltaX) > Math.abs(width/ 3);
   }
 
-  pan({overallVelocityX, overallVelocityY, deltaX, deltaY}: any) {
-    this.destroyInterval();
-    overallVelocityX = Math.abs(overallVelocityX);
-    overallVelocityY = Math.abs(overallVelocityY);
-    if (overallVelocityX > overallVelocityY) {
-      this.styles.transform = `translate3d(${this.translate + deltaX}px, 0, 0)`;
-      this.panning = !this.loop;
+  pan({distance, velocityX, velocityY, deltaX, deltaY, isFinal}: any) {
+    if (isFinal && (distance === this.distance || distance - this.distance > 100)) {
+      this.panning = false;
+      window.requestAnimationFrame(() => {
+        this.resetPan();
+      });
+      return;
     }
+    this.distance = distance;
+    window.requestAnimationFrame(() => {
+      velocityX = Math.abs(velocityX);
+      velocityY = Math.abs(velocityY);
+      if (velocityX >= velocityY) {
+        this.styles.transform = `translate3d(${this.translate + deltaX}px, 0, 0)`;
+      }
+    });
   }
 
+  panstart(event: any) {
+    this.distance = event.distance;
+    window.requestAnimationFrame(() => {
+      this.destroyInterval();
+      this.panning = !this.loop;
+
+    })
+  }
+  
   panend(event: any) {
-    this.panning = false;
-    if (event.deltaX > 0) {
-      this.panRight(event);
-    } else {
-      this.panLeft(event);
-    }
+    window.requestAnimationFrame(() => {
+      this.panning = false;
+      if (event.deltaX > 0) {
+        this.panRight(event);
+      } else {
+        this.panLeft(event);
+      }
+    });
   }
 
   private panLeft (event: any) {
@@ -136,7 +156,6 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   }
 
   private panRight (event: any) {
-    const initalLeft = Math.abs(this.flexWidth);
     if (!this.isPrevDisabled && this.panHasMinDistance(event.deltaX, 'right')) {
       this.movePrev();
       this.animatePan();

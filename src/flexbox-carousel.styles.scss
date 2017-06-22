@@ -28,12 +28,12 @@
     touch-action: pan-x;
   }
   .carousel{
+    transform: translate3d(0, 0,0);
     will-change: transform;
     display: flex;
     margin: 0;
     padding: 0;
     position: relative;
-    transform: translate3d(0, 0,0);
     backface-visibility: hidden;
     perspective: 1000;
     &.is-set {

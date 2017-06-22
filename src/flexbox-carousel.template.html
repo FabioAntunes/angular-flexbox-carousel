@@ -1,5 +1,5 @@
 <section #section>
-  <div class="wrapper" (tap)="destroyInterval()" (panleft)="pan($event)" (panright)="pan($event)" (panend)="panend($event)">
+  <div class="wrapper" (tap)="destroyInterval()" (panStart)="panstart($event)" (panleft)="pan($event)" (panright)="pan($event)" (panend)="panend($event)">
     <div class="carousel" [ngStyle]="styles"
        #carousel
        [ngClass]="{
