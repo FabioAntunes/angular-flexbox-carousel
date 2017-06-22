@@ -40,6 +40,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   panning = false;
   order = 0;
   index = 0;
+  initialLeft = 0;
   flexWidth = 0;
   reversing = false;
   interval: any;
@@ -229,16 +230,17 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   }
 
   private animate() {
+    console.log('yolo', this.loop);
     if (!this.loop) return;
     this.updateOrder();
     const translate = this.reversing ? -this.getItem(this.index).offsetWidth : this.getItem(this.index).offsetWidth;
+    console.log(translate);
     this.styles.transform = `translate3d(${translate}px, 0, 0)`;
-    this.styles.left = `-${this.getItem(this.index - 1).offsetWidth}px`;
     this.animation = true;
     setTimeout(() => {
       this.animation = false;
       this.styles.transform = 'translate3d(0, 0, 0)';
-    }, 50);
+    }, 100);
   }
 
   private animatePan() {
@@ -255,7 +257,8 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   private calcItems() {
     if (this.items.length) {
       if (this.loop && this.items.last.elem.nativeElement.offsetWidth > 0) {
-        this.styles.left = `-${this.items.last.elem.nativeElement.offsetWidth}px`;
+        this.initialLeft = this.getItem(this.index - 1).offsetWidth;
+        this.styles.left = `-${this.initialLeft}px`;
       }
       this.maxWidth = this.items.reduce((width, item) => {
         return width + item.elem.nativeElement.offsetWidth;
@@ -300,7 +303,8 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   private calcVisibleItems() {
     const translate = Math.abs(this.translate);
     this.visibleItems = this.items.toArray().reduce((acc, item, index) => {
-      let difference = item.elem.nativeElement.offsetLeft - translate;
+      console.log(item.elem);
+      let difference = item.elem.nativeElement.offsetLeft - translate - this.initialLeft;
       if (difference >= 0 && this.flexWidth - 
         (difference + item.elem.nativeElement.offsetWidth) >= 0
       ) {
@@ -311,6 +315,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
       }
       return acc;
     }, {left: Infinity, right: 0, visible: 0});
+    console.log(this.visibleItems);
   }
 
   private updateOrder () {
