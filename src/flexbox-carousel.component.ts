@@ -150,7 +150,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   private panLeft (event: any) {
     if (!this.isNextDisabled && this.panHasMinDistance(event.deltaX, 'left')) {
       this.moveNext();
-      this.animatePan();
+      this.animate();
       return;
     }
     this.resetPan();
@@ -159,7 +159,7 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   private panRight (event: any) {
     if (!this.isPrevDisabled && this.panHasMinDistance(event.deltaX, 'right')) {
       this.movePrev();
-      this.animatePan();
+      this.animate();
       return;
     }
     this.resetPan();
@@ -176,24 +176,25 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   next () {
     this.destroyInterval();
     if (!this.isNextDisabled) {
-      this.moveNext();
-      this.animate();
+      window.requestAnimationFrame(() => {
+        this.moveNext();
+        this.animate();
+      })
     }
   }
   moveNext () {
     if (this.loop) {
-      // this.carousel.nativeElement.style.transform = `translate3d(${initalLeft}px, 0, 0)`;
-      this.order = this.order + 1 === this.max ? 0 : this.order + 1;
+      this.index = this.index + 1 === this.max ? 0 : this.index + 1;
     } else {
       const item = this.getItem(this.visibleItems.right + 1);
       this.translate = -(item.offsetLeft - (this.flexWidth - item.offsetWidth));
       this.index += 1;
       this.styles.transform = `translate3d(${this.translate}px, 0, 0)`;
-      setTimeout(() => {
-        this.calcVisibleItems();
-        this.emitNextEvent();
-      }, 100)
     }
+    setTimeout(() => {
+      this.calcVisibleItems();
+      this.emitNextEvent();
+    }, 100)
 
     this.reversing = false;
   }
@@ -201,24 +202,26 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   prev () {
     this.destroyInterval();
     if (!this.isPrevDisabled) {
-      this.movePrev();
-      this.animate();
+      window.requestAnimationFrame(() => {
+        this.movePrev();
+        this.animate();
+      });
     }
   }
 
   movePrev () {
     if (this.loop) {
-      this.order = this.order - 1 < 0 ? this.max - 1 : this.order - 1;
+      this.index = this.index - 1 < 0 ? this.max - 1 : this.index - 1;
     } else {
       this.index -= 1;
       const item = this.getItem(this.visibleItems.left - 1);
       this.translate = -item.offsetLeft;
       this.carousel.nativeElement.style.transform = `translate3d(${this.translate}px, 0, 0)`;
-      setTimeout(() => {
-        this.calcVisibleItems();
-        this.emitPreviousEvent();
-      }, 100)
     }
+    setTimeout(() => {
+      this.calcVisibleItems();
+      this.emitPreviousEvent();
+    }, 100)
 
     this.reversing = true;
   }
@@ -230,28 +233,15 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   }
 
   private animate() {
-    console.log('yolo', this.loop);
     if (!this.loop) return;
     this.updateOrder();
     const translate = this.reversing ? -this.getItem(this.index).offsetWidth : this.getItem(this.index).offsetWidth;
-    console.log(translate);
     this.styles.transform = `translate3d(${translate}px, 0, 0)`;
     this.animation = true;
-    setTimeout(() => {
+    window.requestAnimationFrame(() => {
       this.animation = false;
       this.styles.transform = 'translate3d(0, 0, 0)';
-    }, 100);
-  }
-
-  private animatePan() {
-    if (!this.loop) return;
-    setTimeout(() => {
-      this.updateOrder();
-      this.styles.transform = 'translate3d(0, 0, 0)';
-      setTimeout(() => {
-        this.panning = false;
-      }, 50);
-    }, 150);
+    });
   }
 
   private calcItems() {
@@ -281,11 +271,18 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   }
 
   private getOrder (i: number) {
-    return i < this.order ? this.max - this.order + i : i - this.order;
+    if (this.index === i) {
+      return 1;
+    }
+
+    if (this.index - 1 === i || this.index === 0 && i === this.max - 1) {
+      return 0;
+    }
+
+    return i > this.index ? i - this.index + 1 :  this.max + ((i + 1) - this.index);
   }
 
   private initialize () {
-    this.order = 0;
     setTimeout(() => {
       this.calcItems();
       this.items.forEach((item, index) => {
