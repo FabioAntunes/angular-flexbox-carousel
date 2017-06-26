@@ -300,7 +300,6 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
   private calcVisibleItems() {
     const translate = Math.abs(this.translate);
     this.visibleItems = this.items.toArray().reduce((acc, item, index) => {
-      console.log(item.elem);
       let difference = item.elem.nativeElement.offsetLeft - translate - this.initialLeft;
       if (difference >= 0 && this.flexWidth - 
         (difference + item.elem.nativeElement.offsetWidth) >= 0
@@ -312,7 +311,6 @@ export class FlexboxCarouselComponent implements AfterContentInit, OnDestroy, On
       }
       return acc;
     }, {left: Infinity, right: 0, visible: 0});
-    console.log(this.visibleItems);
   }
 
   private updateOrder () {
